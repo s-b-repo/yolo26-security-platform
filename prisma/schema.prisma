@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Camera layer ────────────────────────────────────────────────
+model Camera {
+  id            String    @id // e.g. CAM-001
+  name          String
+  location      String
+  streamUrl     String
+  resolution    String // "1920x1080"
+  fps           Int       @default(25)
+  orientation   String // fixed-dome | fixed-bullet | ptz | fisheye
+  status        String    @default("online") // online | offline | degraded
+  modelTier     String    @default("yolo26n-edge") // yolo26n-edge | yolo26s-server | yolo26l-central
+  zones         String    @default("[]") // JSON: [{id,name,type,color,polygon:[[x,y]...]}]
+  calibration   String    @default("{}") // JSON
+  edgeDevice    String? // e.g. jetson-orin-nx-01
+  snapshot      String? // path to snapshot image, e.g. /snapshots/cam-001.png
+  lastHeartbeat DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+// ─── Tracking layer (person / weapon tracks per camera) ─────────
+model Track {
+  id              String   @id @default(cuid())
+  cameraId        String
+  trackNum        Int // per-camera track id, e.g. 182
+  objectType      String // person | firearm | knife | bat | backpack | vehicle
+  confidence      Float    @default(0.5)
+  framesConfirmed Int      @default(1)
+  status          String   @default("active") // active | ended | escalated
+  currentZone     String?
+  bbox            String   @default("{}") // JSON normalized {x,y,w,h}
+  trail           String   @default("[]") // JSON array of recent normalized positions
+  firstSeen       DateTime @default(now())
+  lastSeen        DateTime @default(now())
+
+  @@index([cameraId, status])
+  @@index([objectType, status])
+}
+
+// ─── Event engine output (alerts / security events) ─────────────
+model SecurityEvent {
+  id              String   @id // EVT-000182
+  cameraId        String
+  type            String // weapon_detection | weapon_person_association | zone_intrusion | loitering | perimeter_breach | crowd_surge | camera_tamper | person_detection
+  severity        String // info | suspicious | high | critical
+  object          String? // firearm | knife | person ...
+  personTrack     Int? // associated person track number
+  confidence      Float
+  zone            String?
+  model           String // weapon-yolo26-v12
+  timestamp       DateTime @default(now())
+  framesConfirmed Int      @default(1)
+  summary         String
+  evidence        String   @default("{}") // JSON {snapshot, clip, detections:[{object,confidence,bbox}], trail}
+  status          String   @default("open") // open | acknowledged | dismissed | escalated | resolved
+  acknowledgedBy  String?
+  acknowledgedAt  DateTime?
+  notes           String?
+  ruleId          String?
+
+  @@index([severity, timestamp])
+  @@index([cameraId, timestamp])
+  @@index([status])
+}
+
+// ─── Event engine rules ─────────────────────────────────────────
+model Rule {
+  id            String    @id @default(cuid())
+  name          String
+  description   String
+  enabled       Boolean   @default(true)
+  conditions    String // JSON array [{field, op, value}] — AND semantics
+  action        String // raise_alert | notify_security | escalate_immediately | lockdown_zone
+  severity      String // info | suspicious | high | critical
+  priority      Int       @default(1) // escalation priority 1-3
+  hits          Int       @default(0)
+  lastTriggered DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+// ─── Model registry ─────────────────────────────────────────────
+model ModelVersion {
+  id          String    @id // weapon-yolo26-v12
+  variant     String // yolo26n | yolo26s | yolo26l
+  tier        String // edge | server | central
+  formats     String    @default("[\"pytorch\"]") // JSON ["pytorch","onnx","tensorrt"]
+  status      String    @default("shadow") // active | shadow | archived | training
+  metrics     String    @default("{}") // JSON {mAP50, precision, recall, latencyMs, fps}
+  trainedAt   DateTime?
+  datasetSize Int? // training images
+  notes       String?
+  createdAt   DateTime  @default(now())
+}
+
+// ─── System log stream ──────────────────────────────────────────
+model SystemLog {
+  id        String   @id @default(cuid())
+  ts        DateTime @default(now())
+  level     String // info | warn | error
+  component String // camera_layer | detection | tracking | temporal_verification | event_engine | alerting | storage | simulator
+  message   String
+
+  @@index([ts])
+}

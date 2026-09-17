@@ -1,0 +1,498 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "yolo26-security-platform.schema.json",
+  "title": "YOLO26 Security Platform - Architecture Specification Schema",
+  "description": "Draft-07 schema for machine-validating yolo26-security-platform.json, a lossless structured representation of the YOLO26 weapon/security detection platform architecture.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["metadata", "sources", "yolo26_capabilities", "architecture", "camera_layer", "detection_layer", "tracking_temporal", "association_and_zones", "event_engine", "alerting", "evidence_and_storage", "deployment", "api_layer", "data_strategy", "roadmap"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "metadata": {
+      "type": "object",
+      "required": ["doc_id", "title", "version", "generated_date", "language", "content_type", "purpose", "design_principle", "source_document", "section_index"],
+      "properties": {
+        "doc_id": {"type": "string"},
+        "title": {"type": "string"},
+        "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+        "generated_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "language": {"type": "string"},
+        "content_type": {"type": "string"},
+        "purpose": {"type": "string"},
+        "design_principle": {"type": "string"},
+        "source_document": {
+          "type": "object",
+          "required": ["original_format", "section_count", "additional_parts"],
+          "properties": {
+            "original_format": {"type": "string"},
+            "section_count": {"type": "integer", "minimum": 1},
+            "additional_parts": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "section_index": {
+          "type": "array",
+          "minItems": 20,
+          "items": {
+            "type": "object",
+            "required": ["section", "title", "json_path"],
+            "properties": {
+              "section": {"type": ["integer", "string"]},
+              "title": {"type": "string"},
+              "json_path": {"type": "string", "pattern": "^\\$"}
+            }
+          }
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/definitions/source"}
+    },
+    "yolo26_capabilities": {
+      "type": "object",
+      "required": ["role", "supported_tasks", "tracking", "export_formats"],
+      "properties": {
+        "role": {"type": "string"},
+        "supported_tasks": {"type": "array", "items": {"type": "string"}, "minItems": 4},
+        "tracking": {
+          "type": "object",
+          "required": ["available", "named_options"],
+          "properties": {
+            "available": {"type": "boolean"},
+            "multiple_trackers": {"type": "boolean"},
+            "named_options": {"type": "array", "items": {"type": "string"}},
+            "note": {"type": "string"},
+            "reid_options_available": {"type": "boolean"}
+          }
+        },
+        "nms_free_end_to_end_detection": {
+          "type": "object",
+          "properties": {
+            "available": {"type": "boolean"},
+            "optional": {"type": "boolean"}
+          }
+        },
+        "export_formats": {"type": "array", "items": {"type": "string"}},
+        "custom_training": {"type": "boolean"},
+        "source_refs": {"type": "array", "items": {"$ref": "#/definitions/sourceRef"}}
+      }
+    },
+    "architecture": {
+      "type": "object",
+      "required": ["style", "overall_architecture", "end_to_end_production", "layered_model_pipeline", "edge_central_pattern"],
+      "properties": {
+        "source_sections": {"type": "array", "items": {"type": "integer"}},
+        "style": {"type": "string"},
+        "overall_architecture": {"$ref": "#/definitions/graph"},
+        "end_to_end_production": {"$ref": "#/definitions/graph"},
+        "layered_model_pipeline": {"$ref": "#/definitions/graph"},
+        "edge_central_pattern": {
+          "type": "object",
+          "required": ["principle", "flow", "send_to_central_only", "benefits"],
+          "properties": {
+            "source_section": {"type": "integer"},
+            "principle": {"type": "string"},
+            "flow": {"type": "array", "items": {"type": "string"}, "minItems": 2},
+            "edge_behavior": {"type": "string"},
+            "send_to_central_only": {"type": "array", "items": {"type": "string"}},
+            "benefits": {"type": "array", "items": {"type": "string"}}
+          }
+        }
+      }
+    },
+    "camera_layer": {
+      "type": "object",
+      "required": ["vendor_policy", "supported_integrations", "camera_record_fields"],
+      "properties": {
+        "source_section": {"type": "integer"},
+        "vendor_policy": {"type": "string"},
+        "supported_integrations": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "object",
+            "required": ["source", "mechanism"],
+            "properties": {
+              "source": {"type": "string"},
+              "mechanism": {"type": "string"}
+            }
+          }
+        },
+        "normalization": {"type": "string"},
+        "camera_record_fields": {
+          "type": "object",
+          "required": ["camera_id", "location", "stream_url", "resolution", "fps", "orientation", "zones", "calibration"]
+        }
+      }
+    },
+    "detection_layer": {
+      "type": "object",
+      "required": ["strategy", "model_tiers", "initial_classes", "custom_weapon_model"],
+      "properties": {
+        "source_sections": {"type": "array", "items": {"type": "integer"}},
+        "strategy": {"type": "string"},
+        "model_tiers": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["variant", "deployment_target"],
+            "properties": {
+              "variant": {"type": "string"},
+              "deployment_target": {"type": "string"},
+              "rationale": {"type": "string"}
+            }
+          }
+        },
+        "benchmarking_rule": {"type": "string"},
+        "initial_classes": {"type": "array", "items": {"type": "string"}, "minItems": 5},
+        "class_expansion_policy": {"type": "string"},
+        "weapon_class_policy": {"type": "string"},
+        "custom_weapon_model": {
+          "type": "object",
+          "required": ["training_pipeline", "required_hard_examples"],
+          "properties": {
+            "importance": {"type": "string"},
+            "training_pipeline": {"type": "array", "items": {"type": "string"}, "minItems": 5},
+            "required_hard_examples": {"type": "array", "items": {"type": "string"}, "minItems": 10},
+            "rationale": {"type": "string"}
+          }
+        }
+      }
+    },
+    "tracking_temporal": {
+      "type": "object",
+      "required": ["principle", "multi_frame_confirmation", "temporal_verification", "confidence_policy"],
+      "properties": {
+        "source_sections": {"type": "array", "items": {"type": "integer"}},
+        "principle": {"type": "string"},
+        "multi_frame_confirmation": {
+          "type": "object",
+          "required": ["confirmed_pattern", "rejected_pattern", "track_record_example"],
+          "properties": {
+            "confirmed_pattern": {"type": "array", "items": {"type": "string"}},
+            "rejected_pattern": {"type": "string"},
+            "tracker_options": {"type": "array", "items": {"type": "string"}},
+            "track_record_example": {
+              "type": "object",
+              "required": ["camera_id", "track_id", "object", "confidence", "frames_confirmed"],
+              "properties": {
+                "camera_id": {"type": "string"},
+                "track_id": {"type": "integer"},
+                "object": {"type": "string"},
+                "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                "first_seen": {"type": "string"},
+                "last_seen": {"type": "string"},
+                "frames_confirmed": {"type": "integer", "minimum": 1}
+              }
+            }
+          }
+        },
+        "temporal_verification": {
+          "type": "object",
+          "required": ["position", "pipeline"],
+          "properties": {
+            "position": {"type": "string"},
+            "pipeline": {"type": "array", "items": {"type": "string"}, "minItems": 5},
+            "effect": {"type": "string"}
+          }
+        },
+        "confidence_policy": {
+          "type": "object",
+          "required": ["bands", "caveat"],
+          "properties": {
+            "bands": {
+              "type": "array",
+              "minItems": 4,
+              "items": {
+                "type": "object",
+                "required": ["range", "action"],
+                "properties": {
+                  "range": {"type": "string"},
+                  "lower": {"type": "number"},
+                  "upper_exclusive": {"type": "number"},
+                  "upper": {"type": "number"},
+                  "action": {"type": "string"}
+                }
+              }
+            },
+            "caveat": {"type": "string"}
+          }
+        }
+      }
+    },
+    "association_and_zones": {
+      "type": "object",
+      "required": ["person_weapon_association", "zones", "cross_camera_tracking"],
+      "properties": {
+        "source_sections": {"type": "array", "items": {"type": "integer"}},
+        "person_weapon_association": {
+          "type": "object",
+          "required": ["goal", "priority_escalation", "placement_rule"],
+          "properties": {
+            "goal": {"type": "string"},
+            "concept": {"type": "object"},
+            "priority_escalation": {
+              "type": "array",
+              "minItems": 3,
+              "items": {
+                "type": "object",
+                "required": ["condition", "priority"],
+                "properties": {
+                  "condition": {"type": "string"},
+                  "priority": {"type": "string"}
+                }
+              }
+            },
+            "placement_rule": {"type": "string"}
+          }
+        },
+        "zones": {
+          "type": "object",
+          "required": ["model", "rule_engine_capabilities"],
+          "properties": {
+            "model": {"type": "string"},
+            "example": {"type": "object"},
+            "rule_engine_capabilities": {"type": "array", "items": {"type": "string"}, "minItems": 4}
+          }
+        },
+        "cross_camera_tracking": {
+          "type": "object",
+          "required": ["identity_separation"],
+          "properties": {
+            "example": {"type": "string"},
+            "reid_support": {"type": "string"},
+            "identity_separation": {
+              "type": "object",
+              "required": ["tracking_question", "identity_recognition_question", "policy"]
+            }
+          }
+        }
+      }
+    },
+    "event_engine": {
+      "type": "object",
+      "required": ["role", "example_rules"],
+      "properties": {
+        "source_section": {"type": "integer"},
+        "role": {"type": "string"},
+        "example_rules": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["if", "then"],
+            "properties": {
+              "name": {"type": "string"},
+              "if": {"type": "array", "items": {"type": "string"}, "minItems": 2},
+              "then": {"type": "string"}
+            }
+          }
+        },
+        "benefit": {"type": "string"}
+      }
+    },
+    "alerting": {
+      "type": "object",
+      "required": ["severity_levels", "safety_policy"],
+      "properties": {
+        "source_section": {"type": "integer"},
+        "severity_levels": {
+          "type": "array",
+          "minItems": 4,
+          "items": {
+            "type": "object",
+            "required": ["level", "order", "example"],
+            "properties": {
+              "level": {"enum": ["INFO", "SUSPICIOUS", "HIGH", "CRITICAL"]},
+              "order": {"type": "integer"},
+              "example": {"type": "string"}
+            }
+          }
+        },
+        "dashboard_critical_event_layout": {"type": "object"},
+        "safety_policy": {"type": "string"}
+      }
+    },
+    "evidence_and_storage": {
+      "type": "object",
+      "required": ["principle", "object_storage_layout", "database_tables", "model_registry"],
+      "properties": {
+        "source_sections": {"type": "array", "items": {"type": ["integer", "string"]}},
+        "principle": {"type": "string"},
+        "object_storage_layout": {
+          "type": "object",
+          "required": ["path_pattern", "artifacts_per_event"],
+          "properties": {
+            "root": {"type": "string"},
+            "path_pattern": {"type": "string"},
+            "example_path": {"type": "string"},
+            "artifacts_per_event": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "database_tables": {"type": "array", "items": {"type": "string"}, "minItems": 5},
+        "event_model_provenance": {"type": "object"},
+        "model_registry": {
+          "type": "object",
+          "required": ["versioning_scheme", "tracked_metadata"],
+          "properties": {
+            "versioning_scheme": {"type": "string"},
+            "tracked_metadata": {"type": "array", "items": {"type": "string"}, "minItems": 5},
+            "goal": {"type": "string"}
+          }
+        }
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "required": ["export_formats", "software_stack"],
+      "properties": {
+        "source_sections": {"type": "array", "items": {"type": "integer"}},
+        "export_formats": {
+          "type": "object",
+          "required": ["formats", "pipeline"],
+          "properties": {
+            "principle": {"type": "string"},
+            "formats": {"type": "array", "items": {"type": "string"}},
+            "reference": {"type": "string"},
+            "pipeline": {"type": "array", "items": {"type": "string"}, "minItems": 4},
+            "hardware_guidance": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["hardware", "recommendation"]
+              }
+            }
+          }
+        },
+        "software_stack": {
+          "type": "object",
+          "required": ["flow", "implementation_choices"],
+          "properties": {
+            "philosophy": {"type": "string"},
+            "flow": {
+              "type": "array",
+              "minItems": 3,
+              "items": {
+                "type": "object",
+                "required": ["stage", "components"],
+                "properties": {
+                  "stage": {"type": "string"},
+                  "components": {"type": "array", "items": {"type": "string"}},
+                  "attached_services": {"type": "array", "items": {"type": "string"}}
+                }
+              }
+            },
+            "implementation_choices": {"type": "array", "items": {"type": "string"}, "minItems": 8}
+          }
+        }
+      }
+    },
+    "api_layer": {
+      "type": "object",
+      "required": ["goal", "endpoints", "event_payload_example"],
+      "properties": {
+        "source_section": {"type": "integer"},
+        "goal": {"type": "string"},
+        "endpoints": {
+          "type": "array",
+          "minItems": 8,
+          "items": {
+            "type": "object",
+            "required": ["method", "path"],
+            "properties": {
+              "method": {"enum": ["GET", "POST", "PUT", "DELETE", "PATCH"]},
+              "path": {"type": "string", "pattern": "^/"}
+            }
+          }
+        },
+        "event_payload_example": {
+          "type": "object",
+          "required": ["event_id", "camera_id", "type", "severity", "object", "confidence", "timestamp"],
+          "properties": {
+            "event_id": {"type": "string"},
+            "camera_id": {"type": "string"},
+            "type": {"type": "string"},
+            "severity": {"enum": ["info", "suspicious", "high", "critical"]},
+            "object": {"type": "string"},
+            "person_track": {"type": "integer"},
+            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+            "zone": {"type": "string"},
+            "model": {"type": "string"},
+            "timestamp": {"type": "string"}
+          }
+        }
+      }
+    },
+    "data_strategy": {
+      "type": "object",
+      "required": ["ip_positioning", "model_development_loop"],
+      "properties": {
+        "source_section": {"type": ["integer", "string"]},
+        "ip_positioning": {
+          "type": "object",
+          "required": ["weak_claim", "strong_claim"]
+        },
+        "model_development_loop": {"type": "array", "items": {"type": "string"}, "minItems": 5},
+        "advantage": {"type": "string"}
+      }
+    },
+    "roadmap": {
+      "type": "object",
+      "required": ["v1_exclusions", "build_sequence", "metrics_that_matter"],
+      "properties": {
+        "source_section": {"type": "string"},
+        "v1_exclusions": {"type": "array", "items": {"type": "string"}, "minItems": 3},
+        "build_sequence": {"type": "array", "items": {"type": "string"}, "minItems": 5},
+        "metrics_that_matter": {"type": "array", "items": {"type": "string"}, "minItems": 5},
+        "yolo26_fit": {"type": "string"}
+      }
+    }
+  },
+  "definitions": {
+    "source": {
+      "type": "object",
+      "required": ["id", "title", "url"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^S\\d+$"},
+        "title": {"type": "string"},
+        "url": {"type": "string", "pattern": "^https?://"},
+        "used_for": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "sourceRef": {"type": "string", "pattern": "^S\\d+$"},
+    "graphNode": {
+      "type": "object",
+      "required": ["id", "label", "kind"],
+      "properties": {
+        "id": {"type": "string"},
+        "label": {"type": "string"},
+        "kind": {"type": "string"},
+        "details": {"type": "array", "items": {"type": "string"}},
+        "optional": {"type": "boolean"}
+      }
+    },
+    "graphEdge": {
+      "type": "object",
+      "required": ["from", "to"],
+      "properties": {
+        "from": {"type": "string"},
+        "to": {"type": "string"},
+        "label": {"type": "string"},
+        "optional": {"type": "boolean"}
+      }
+    },
+    "graph": {
+      "type": "object",
+      "required": ["title", "nodes", "edges"],
+      "properties": {
+        "title": {"type": "string"},
+        "nodes": {"type": "array", "minItems": 3, "items": {"$ref": "#/definitions/graphNode"}},
+        "edges": {"type": "array", "minItems": 2, "items": {"$ref": "#/definitions/graphEdge"}},
+        "notes": {"type": "array", "items": {"type": "string"}},
+        "rationale": {"type": "string"}
+      }
+    }
+  }
+}

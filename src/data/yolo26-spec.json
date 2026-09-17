@@ -1,0 +1,540 @@
+{
+  "$schema": "yolo26-security-platform.schema.json",
+  "metadata": {
+    "doc_id": "yolo26-security-platform-architecture",
+    "title": "YOLO26-Based Weapon and Security Detection Platform - Production Architecture",
+    "version": "1.0.0",
+    "generated_date": "2026-09-14",
+    "language": "en",
+    "content_type": "system_architecture_specification",
+    "purpose": "Lossless, machine-parseable restructuring of a 20-section architecture brief for a production YOLO26-based weapon and security detection platform, so that any AI, RAG pipeline, or API can ingest every fact without ambiguity. All ASCII diagrams are converted into structured node/edge graphs; all code blocks are converted into typed arrays and objects.",
+    "design_principle": "YOLO26 is the visual perception engine only - it is NOT responsible for the entire security decision. Detections flow through tracking, temporal verification, and a rule-driven security event engine before any alert or action is produced.",
+    "source_document": {
+      "original_format": "markdown with ASCII diagrams and code blocks",
+      "section_count": 20,
+      "additional_parts": ["recommended first implementation"]
+    },
+    "section_index": [
+      {"section": 0, "title": "Framing and design choice", "json_path": "$.metadata.design_principle + $.yolo26_capabilities"},
+      {"section": 1, "title": "Overall architecture", "json_path": "$.architecture.overall_architecture"},
+      {"section": 2, "title": "Camera layer", "json_path": "$.camera_layer"},
+      {"section": 3, "title": "YOLO26 detection layer", "json_path": "$.detection_layer.model_tiers + $.detection_layer.initial_classes"},
+      {"section": 4, "title": "Custom weapon model", "json_path": "$.detection_layer.custom_weapon_model"},
+      {"section": 5, "title": "Tracking, not independent frame detection", "json_path": "$.tracking_temporal.multi_frame_confirmation"},
+      {"section": 6, "title": "Temporal verification", "json_path": "$.tracking_temporal.temporal_verification + $.tracking_temporal.confidence_policy"},
+      {"section": 7, "title": "Person + weapon association", "json_path": "$.association_and_zones.person_weapon_association"},
+      {"section": 8, "title": "Camera zones", "json_path": "$.association_and_zones.zones"},
+      {"section": 9, "title": "Cross-camera tracking", "json_path": "$.association_and_zones.cross_camera_tracking"},
+      {"section": 10, "title": "Event engine", "json_path": "$.event_engine"},
+      {"section": 11, "title": "Alert architecture", "json_path": "$.alerting"},
+      {"section": 12, "title": "Evidence storage", "json_path": "$.evidence_and_storage"},
+      {"section": 13, "title": "Edge + central architecture", "json_path": "$.architecture.edge_central_pattern"},
+      {"section": 14, "title": "Deployment formats", "json_path": "$.deployment.export_formats"},
+      {"section": 15, "title": "Recommended software stack", "json_path": "$.deployment.software_stack"},
+      {"section": 16, "title": "API layer", "json_path": "$.api_layer"},
+      {"section": 17, "title": "Model architecture to deploy", "json_path": "$.architecture.layered_model_pipeline"},
+      {"section": 18, "title": "Key differentiator: proprietary security dataset", "json_path": "$.data_strategy"},
+      {"section": 19, "title": "Versioned model registry", "json_path": "$.evidence_and_storage.model_registry"},
+      {"section": 20, "title": "End-to-end production architecture", "json_path": "$.architecture.end_to_end_production"},
+      {"section": 21, "title": "Recommended first implementation", "json_path": "$.roadmap"}
+    ]
+  },
+  "sources": [
+    {
+      "id": "S1",
+      "title": "Ultralytics YOLO26",
+      "url": "https://docs.ultralytics.com/models/yolo26",
+      "used_for": [
+        "supported task family: detection, segmentation, pose, depth, classification, oriented detection",
+        "optional NMS-free end-to-end detection path",
+        "export to deployment formats such as ONNX and TensorRT",
+        "YOLO26n substantially lower CPU inference latency than larger variants",
+        "layered model approach feasibility"
+      ]
+    },
+    {
+      "id": "S2",
+      "title": "YOLO Python Usage - Ultralytics",
+      "url": "https://docs.ultralytics.com/usage/python",
+      "used_for": [
+        "real-time tracking support",
+        "tracker options including ByteTrack and BoT-SORT, plus newer tracking options"
+      ]
+    },
+    {
+      "id": "S3",
+      "title": "YOLO Multi-Object Tracking in Video - Ultralytics",
+      "url": "https://docs.ultralytics.com/modes/track",
+      "used_for": [
+        "ReID options for appearance-based association across views"
+      ]
+    },
+    {
+      "id": "S4",
+      "title": "Model Export with Ultralytics YOLO - Ultralytics",
+      "url": "https://docs.ultralytics.com/modes/export",
+      "used_for": [
+        "TensorRT and ONNX deployment paths"
+      ]
+    }
+  ],
+  "yolo26_capabilities": {
+    "role": "visual perception engine, not the entire security decision system",
+    "supported_tasks": ["detection", "segmentation", "pose", "depth", "classification", "oriented detection (OBB)"],
+    "tracking": {
+      "available": true,
+      "multiple_trackers": true,
+      "named_options": ["ByteTrack", "BoT-SORT"],
+      "note": "plus newer tracking options",
+      "reid_options_available": true
+    },
+    "nms_free_end_to_end_detection": {
+      "available": true,
+      "optional": true
+    },
+    "export_formats": ["ONNX", "TensorRT"],
+    "custom_training": true,
+    "source_refs": ["S1", "S2", "S3", "S4"]
+  },
+  "architecture": {
+    "source_sections": [1, 13, 17, 20],
+    "style": "layered pipeline: perception (YOLO26) -> tracking -> temporal verification -> event reasoning -> alerting and evidence",
+    "overall_architecture": {
+      "title": "Overall architecture (source section 1)",
+      "nodes": [
+        {"id": "camera_network", "label": "CAMERA NETWORK", "kind": "source", "details": ["IP Cameras / CCTV / PTZ", "RTSP / ONVIF / NVR"]},
+        {"id": "video_ingestion", "label": "VIDEO INGESTION", "kind": "service", "details": ["RTSP Gateway", "Stream Decoder", "Frame Sampling", "Camera Health Monitor"]},
+        {"id": "ai_inference", "label": "AI INFERENCE LAYER - YOLO26", "kind": "ai", "details": ["Person / Weapon / Vehicle / Object detection", "Detection / Segmentation / Pose", "ONNX / TensorRT / GPU / Edge"]},
+        {"id": "tracking_temporal", "label": "TRACKING + TEMPORAL LAYER", "kind": "ai", "details": ["Multi-object tracking", "Person IDs", "Object IDs", "Cross-frame confirmation", "Optional appearance/ReID"]},
+        {"id": "event_engine", "label": "SECURITY EVENT ENGINE", "kind": "logic", "details": ["Zone rules", "Weapon + person correlation", "Loitering", "Restricted-area entry", "Crowd/event detection", "Temporal confidence", "Camera-to-camera correlation"]},
+        {"id": "alert_system", "label": "ALERT SYSTEM", "kind": "output", "details": ["Dashboard", "Control room", "SMS/Email", "Mobile app", "Webhooks"]},
+        {"id": "evidence_system", "label": "EVIDENCE SYSTEM", "kind": "output", "details": ["Event clip", "Frames", "Metadata", "Audit log", "Retention policy"]}
+      ],
+      "edges": [
+        {"from": "camera_network", "to": "video_ingestion"},
+        {"from": "video_ingestion", "to": "ai_inference"},
+        {"from": "ai_inference", "to": "tracking_temporal"},
+        {"from": "tracking_temporal", "to": "event_engine"},
+        {"from": "event_engine", "to": "alert_system"},
+        {"from": "event_engine", "to": "evidence_system"}
+      ]
+    },
+    "end_to_end_production": {
+      "title": "End-to-end production architecture (source section 20)",
+      "nodes": [
+        {"id": "cctv_ip_cameras", "label": "CCTV / IP CAMERAS", "kind": "source"},
+        {"id": "edge_gateway", "label": "EDGE GATEWAY", "kind": "compute", "details": ["Stream processing", "YOLO26", "Tracking", "Temporal filtering"]},
+        {"id": "central_ai_platform", "label": "CENTRAL AI PLATFORM", "kind": "compute", "details": ["Event Correlation", "Zone Rules", "Cross-camera Tracking", "Risk Scoring", "Model Management", "Audit Logs"]},
+        {"id": "postgresql", "label": "PostgreSQL", "kind": "data_store"},
+        {"id": "object_storage", "label": "Object Storage", "kind": "data_store"},
+        {"id": "redis_event_bus", "label": "Redis / Event Bus", "kind": "data_store"},
+        {"id": "security_dashboard", "label": "SECURITY DASHBOARD", "kind": "presentation", "details": ["Live cameras", "Active alerts", "Event playback", "Camera status", "Analytics"]},
+        {"id": "control_room", "label": "Control Room", "kind": "consumer"},
+        {"id": "external_systems", "label": "External Systems", "kind": "consumer", "details": ["VMS", "SIEM", "Webhooks"]}
+      ],
+      "edges": [
+        {"from": "cctv_ip_cameras", "to": "edge_gateway", "label": "RTSP/ONVIF"},
+        {"from": "edge_gateway", "to": "central_ai_platform", "label": "detections/events"},
+        {"from": "central_ai_platform", "to": "postgresql"},
+        {"from": "central_ai_platform", "to": "object_storage"},
+        {"from": "central_ai_platform", "to": "redis_event_bus"},
+        {"from": "postgresql", "to": "security_dashboard", "label": "data"},
+        {"from": "object_storage", "to": "security_dashboard", "label": "data"},
+        {"from": "redis_event_bus", "to": "security_dashboard", "label": "data"},
+        {"from": "security_dashboard", "to": "control_room"},
+        {"from": "security_dashboard", "to": "external_systems", "label": "integrations"}
+      ]
+    },
+    "layered_model_pipeline": {
+      "title": "Model architecture to actually deploy (source section 17) - layered, not one enormous model",
+      "nodes": [
+        {"id": "camera", "label": "CAMERA", "kind": "source"},
+        {"id": "yolo26_detector", "label": "YOLO26 detector", "kind": "ai"},
+        {"id": "person_branch", "label": "Person", "kind": "ai_output"},
+        {"id": "weapon_branch", "label": "Weapon", "kind": "ai_output"},
+        {"id": "vehicle_branch", "label": "Vehicle", "kind": "ai_output"},
+        {"id": "object_tracker", "label": "Object Tracker", "kind": "ai"},
+        {"id": "temporal_verification", "label": "Temporal Verification", "kind": "logic"},
+        {"id": "event_correlation", "label": "Event Correlation", "kind": "logic"},
+        {"id": "security_decision", "label": "Security Decision", "kind": "logic"},
+        {"id": "event", "label": "EVENT", "kind": "intermediate"},
+        {"id": "pose_analysis", "label": "Pose analysis", "kind": "optional_ai", "optional": true},
+        {"id": "secondary_model", "label": "Secondary model", "kind": "optional_ai", "optional": true},
+        {"id": "risk_scoring", "label": "Risk scoring", "kind": "optional_logic", "optional": true}
+      ],
+      "edges": [
+        {"from": "camera", "to": "yolo26_detector"},
+        {"from": "yolo26_detector", "to": "person_branch"},
+        {"from": "yolo26_detector", "to": "weapon_branch"},
+        {"from": "yolo26_detector", "to": "vehicle_branch"},
+        {"from": "person_branch", "to": "object_tracker"},
+        {"from": "weapon_branch", "to": "object_tracker"},
+        {"from": "vehicle_branch", "to": "object_tracker"},
+        {"from": "object_tracker", "to": "temporal_verification"},
+        {"from": "temporal_verification", "to": "event_correlation"},
+        {"from": "event_correlation", "to": "security_decision"},
+        {"from": "security_decision", "to": "event", "label": "emits"},
+        {"from": "event", "to": "pose_analysis", "optional": true},
+        {"from": "event", "to": "secondary_model", "optional": true},
+        {"from": "pose_analysis", "to": "risk_scoring", "optional": true},
+        {"from": "secondary_model", "to": "risk_scoring", "optional": true}
+      ],
+      "notes": ["The pose analysis / secondary model / risk scoring branch is optional."],
+      "rationale": "YOLO26's broader task family (detection, segmentation, pose, depth, classification, OBB) makes this layered approach practical (S1)."
+    },
+    "edge_central_pattern": {
+      "source_section": 13,
+      "principle": "For many cameras, do NOT send every raw stream to a central cloud server.",
+      "flow": ["CAMERA", "EDGE AI BOX", "YOLO26", "events/detections", "CENTRAL SECURITY PLATFORM"],
+      "edge_behavior": "The edge device processes video locally.",
+      "send_to_central_only": ["detections", "events", "thumbnails", "short evidence clips", "health metrics"],
+      "benefits": ["reduces bandwidth", "allows the system to keep detecting during connectivity problems"]
+    }
+  },
+  "camera_layer": {
+    "source_section": 2,
+    "vendor_policy": "The platform should not depend on a particular camera manufacturer. Adding a new camera is mostly a configuration operation rather than a software change.",
+    "supported_integrations": [
+      {"source": "IP cameras", "mechanism": "RTSP"},
+      {"source": "ONVIF cameras", "mechanism": "discovery/control"},
+      {"source": "NVR/DVR", "mechanism": "existing video feeds"},
+      {"source": "PTZ cameras", "mechanism": "optional automatic camera control"},
+      {"source": "Existing VMS", "mechanism": "integration API"}
+    ],
+    "normalization": "The first service normalizes all camera sources into a standard internal stream.",
+    "camera_record_fields": {
+      "camera_id": "unique identifier",
+      "location": "physical location label",
+      "stream_url": "video stream endpoint",
+      "resolution": "stream resolution",
+      "fps": "frames per second",
+      "orientation": "camera orientation",
+      "zones": "configured zone polygons",
+      "calibration": "camera calibration data"
+    }
+  },
+  "detection_layer": {
+    "source_sections": [3, 4],
+    "strategy": "Use several model sizes rather than forcing one model onto every camera.",
+    "model_tiers": [
+      {"variant": "YOLO26n", "deployment_target": "edge cameras", "rationale": "Ultralytics reports substantially lower CPU inference latency than larger variants (S1)"},
+      {"variant": "YOLO26s", "deployment_target": "normal cameras", "rationale": "balanced compute/accuracy trade-off"},
+      {"variant": "YOLO26m/l", "deployment_target": "high-risk zones", "rationale": "trades compute for accuracy"}
+    ],
+    "benchmarking_rule": "Benchmark on your actual camera footage rather than choosing the model purely from COCO metrics.",
+    "initial_classes": ["person", "firearm", "knife", "other_weapon", "vehicle", "bag", "backpack", "helmet"],
+    "class_expansion_policy": "Start with a narrow, measurable taxonomy, then expand based on the actual environments.",
+    "weapon_class_policy": "Weapon classes should come from your own curated dataset rather than assuming the pretrained COCO model already provides reliable weapon detection.",
+    "custom_weapon_model": {
+      "importance": "One of the most important parts of the platform.",
+      "training_pipeline": [
+        "Real camera footage",
+        "Frame extraction",
+        "Dataset labeling",
+        "YOLO26 training",
+        "Validation",
+        "Night/day testing",
+        "Different camera testing",
+        "False-positive testing",
+        "Deployment"
+      ],
+      "required_hard_examples": [
+        "clear firearm",
+        "partially visible firearm",
+        "hand-held firearm",
+        "firearm in holster",
+        "firearm behind object",
+        "firearm at distance",
+        "dark lighting",
+        "night vision",
+        "motion blur",
+        "low resolution",
+        "crowded scenes",
+        "similar-looking objects",
+        "phones/tools/etc. that resemble weapons"
+      ],
+      "rationale": "Surveillance cameras are substantially harder than clean benchmark imagery."
+    }
+  },
+  "tracking_temporal": {
+    "source_sections": [5, 6],
+    "principle": "Use tracking and multi-frame confirmation instead of firing alarms on independent single-frame detections.",
+    "multi_frame_confirmation": {
+      "confirmed_pattern": [
+        "Frame 1: weapon detected",
+        "Frame 2: weapon detected",
+        "Frame 3: weapon detected",
+        "Frame 4: weapon detected",
+        "=> CONFIRMED EVENT"
+      ],
+      "rejected_pattern": "single detection => alarm",
+      "tracker_options": ["ByteTrack", "BoT-SORT", "newer tracking options (S2)"],
+      "track_record_example": {
+        "camera_id": "CAM-042",
+        "track_id": 182,
+        "object": "firearm",
+        "confidence": 0.94,
+        "first_seen": "2026-09-14T09:12:01",
+        "last_seen": "2026-09-14T09:12:04",
+        "frames_confirmed": 23
+      }
+    },
+    "temporal_verification": {
+      "position": "Sits between YOLO26 and the alarm system.",
+      "pipeline": [
+        "YOLO detection",
+        "confidence > threshold?",
+        "same object detected repeatedly?",
+        "persists for N frames?",
+        "consistent bounding box?",
+        "person relationship?",
+        "zone rule?",
+        "SECURITY EVENT"
+      ],
+      "effect": "This dramatically changes the system from object detection into event detection."
+    },
+    "confidence_policy": {
+      "bands": [
+        {"range": "< 0.40", "lower": 0.0, "upper_exclusive": 0.4, "action": "ignore"},
+        {"range": "0.40-0.65", "lower": 0.4, "upper_exclusive": 0.65, "action": "observe"},
+        {"range": "0.65-0.85", "lower": 0.65, "upper_exclusive": 0.85, "action": "suspicious"},
+        {"range": "> 0.85", "lower": 0.85, "upper": 1.0, "action": "strong detection"}
+      ],
+      "caveat": "These values should be determined experimentally from your validation data, not treated as universal thresholds."
+    }
+  },
+  "association_and_zones": {
+    "source_sections": [7, 8, 9],
+    "person_weapon_association": {
+      "goal": "Go beyond 'Firearm detected.' to 'Firearm detected and associated with tracked person #182.'",
+      "concept": {
+        "tracked_person": "Person #182",
+        "analyzed_region": "hand/object region",
+        "associated_object": "firearm #731"
+      },
+      "priority_escalation": [
+        {"condition": "firearm alone", "priority": "low/medium"},
+        {"condition": "firearm + person", "priority": "high"},
+        {"condition": "firearm + person + restricted zone", "priority": "critical"}
+      ],
+      "placement_rule": "This logic belongs in the event engine, not inside YOLO itself."
+    },
+    "zones": {
+      "model": "Every camera should have configurable polygons.",
+      "example": {
+        "camera": "CAMERA 12",
+        "areas": ["General Area", "RESTRICTED AREA"],
+        "flows": ["ENTRY ->"]
+      },
+      "rule_engine_capabilities": [
+        "weapon detected inside restricted zone",
+        "person enters restricted zone",
+        "person + weapon enters restricted zone",
+        "vehicle enters restricted zone",
+        "person loiters in zone",
+        "multiple people converge in zone"
+      ]
+    },
+    "cross_camera_tracking": {
+      "example": "CAM 01 -> Person #182 -> CAM 04 -> Person #182 -> CAM 07",
+      "reid_support": "Ultralytics' tracking stack provides ReID options, which can be used for appearance-based association across views (S3).",
+      "identity_separation": {
+        "tracking_question": "Is this the same tracked object?",
+        "identity_recognition_question": "Who is this person?",
+        "policy": "Keep identity recognition separate from ordinary tracking. Those are different capabilities and should have different permissions, logging, and policies."
+      }
+    }
+  },
+  "event_engine": {
+    "source_section": 10,
+    "role": "The event engine is the real 'brain' of the security platform.",
+    "example_rules": [
+      {
+        "name": "weapon_in_restricted_zone",
+        "if": [
+          "person detected",
+          "firearm detected",
+          "firearm associated with person",
+          "detection persists > N frames",
+          "person enters restricted zone"
+        ],
+        "then": "create CRITICAL_SECURITY_EVENT"
+      },
+      {
+        "name": "confidence_escalation",
+        "if": [
+          "weapon confidence is high",
+          "weapon remains visible",
+          "person tracking confidence is high"
+        ],
+        "then": "escalate event"
+      }
+    ],
+    "benefit": "Makes it possible to add new detection capabilities without retraining the entire vision system."
+  },
+  "alerting": {
+    "source_section": 11,
+    "severity_levels": [
+      {"level": "INFO", "order": 1, "example": "Person entering an area."},
+      {"level": "SUSPICIOUS", "order": 2, "example": "Object resembling a weapon detected."},
+      {"level": "HIGH", "order": 3, "example": "Weapon detection repeatedly confirmed."},
+      {"level": "CRITICAL", "order": 4, "example": "Confirmed weapon associated with a person inside a protected zone."}
+    ],
+    "dashboard_critical_event_layout": {
+      "title": "CRITICAL EVENT",
+      "fields": {
+        "camera": "CAM-042",
+        "location": "North Entrance",
+        "weapon": "Firearm",
+        "confidence": "94%",
+        "person_track": "#182",
+        "frames_confirmed": 23
+      },
+      "views": ["Live View", "10 sec Before", "Event", "10 sec After"],
+      "operator_actions": ["ACKNOWLEDGE", "ESCALATE"]
+    },
+    "safety_policy": "For safety and reliability, physical interventions should remain behind an explicit authorization/control layer rather than being directly triggered by a single AI detection."
+  },
+  "evidence_and_storage": {
+    "source_sections": [12, 19],
+    "principle": "Store event-centric evidence instead of recording everything into the AI database.",
+    "object_storage_layout": {
+      "root": "/events/",
+      "path_pattern": "/events/{year}/{month}/{day}/{event_id}/",
+      "example_path": "/events/2026/09/14/EVT-000182/",
+      "artifacts_per_event": ["pre_event.mp4", "event.mp4", "post_event.mp4", "detections.json", "thumbnail.jpg"]
+    },
+    "database_tables": ["events", "detections", "tracks", "cameras", "zones", "users", "audit_logs", "model_versions"],
+    "event_model_provenance": {
+      "requirement": "Every AI event should record the model version.",
+      "example": {
+        "model": "weapon-detector-v12",
+        "weights": "sha256: ...",
+        "camera": "CAM-042"
+      },
+      "value": "Extremely valuable when investigating false positives or changing models."
+    },
+    "model_registry": {
+      "versioning_scheme": "weapon-v1, weapon-v2, weapon-v3, ... weapon-v12",
+      "tracked_metadata": [
+        "training dataset",
+        "model weights",
+        "training parameters",
+        "test metrics",
+        "false-positive rate",
+        "false-negative rate",
+        "camera test results",
+        "deployment hardware",
+        "release date"
+      ],
+      "goal": "The security operator can always determine which model generated an alert."
+    }
+  },
+  "deployment": {
+    "source_sections": [14, 15],
+    "export_formats": {
+      "principle": "For production, the model should not necessarily remain a Python .pt file.",
+      "formats": ["ONNX", "TensorRT"],
+      "reference": "Ultralytics supports exporting YOLO26 to deployment-oriented formats and documents TensorRT and ONNX deployment paths (S4).",
+      "pipeline": ["Training: YOLO26 .pt", "Validation", "Export", "TensorRT / ONNX", "Edge inference"],
+      "hardware_guidance": [
+        {"hardware": "NVIDIA", "recommendation": "TensorRT is the obvious benchmark candidate"},
+        {"hardware": "CPU-focused systems", "recommendation": "ONNX/OpenVINO should also be tested"}
+      ]
+    },
+    "software_stack": {
+      "philosophy": "Keep the first production version relatively simple.",
+      "flow": [
+        {"stage": "video_input", "components": ["RTSP / ONVIF"]},
+        {"stage": "media_processing", "components": ["FFmpeg / GStreamer"]},
+        {"stage": "inference_service", "components": ["YOLO26 inference service"], "attached_services": ["Tracking", "Zone engine", "Temporal verification"]},
+        {"stage": "event_api", "components": ["Event API"], "attached_services": ["PostgreSQL", "Redis", "Object storage", "WebSocket"]},
+        {"stage": "dashboard", "components": ["Security dashboard"]}
+      ],
+      "implementation_choices": [
+        "Python",
+        "FastAPI",
+        "Ultralytics YOLO26",
+        "PyTorch (during development)",
+        "TensorRT/ONNX (in production)",
+        "OpenCV/GStreamer",
+        "PostgreSQL",
+        "Redis",
+        "S3-compatible object storage",
+        "React/Next.js dashboard",
+        "Docker"
+      ]
+    }
+  },
+  "api_layer": {
+    "source_section": 16,
+    "goal": "Make the vision platform camera-vendor agnostic through an API, so the system integrates with existing security software instead of replacing everything.",
+    "endpoints": [
+      {"method": "POST", "path": "/cameras"},
+      {"method": "GET", "path": "/cameras"},
+      {"method": "GET", "path": "/cameras/{id}/status"},
+      {"method": "GET", "path": "/detections"},
+      {"method": "GET", "path": "/tracks"},
+      {"method": "GET", "path": "/events"},
+      {"method": "GET", "path": "/events/{id}"},
+      {"method": "POST", "path": "/zones"},
+      {"method": "GET", "path": "/zones"},
+      {"method": "GET", "path": "/models"},
+      {"method": "POST", "path": "/models/deploy"}
+    ],
+    "event_payload_example": {
+      "event_id": "EVT-000182",
+      "camera_id": "CAM-042",
+      "type": "weapon_detection",
+      "severity": "critical",
+      "object": "firearm",
+      "person_track": 182,
+      "confidence": 0.94,
+      "zone": "north_entrance",
+      "model": "weapon-yolo26-v12",
+      "timestamp": "2026-09-14T09:12:04Z"
+    }
+  },
+  "data_strategy": {
+    "source_section": 18,
+    "ip_positioning": {
+      "weak_claim": "We use YOLO26.",
+      "strong_claim": "Your proprietary weapon/security perception system trained on real camera conditions and connected to a temporal security reasoning engine."
+    },
+    "model_development_loop": [
+      "Deployment",
+      "False positives / false negatives",
+      "Human review",
+      "Hard examples added to dataset",
+      "Retraining",
+      "Validation",
+      "New model",
+      "Canary deployment",
+      "Production"
+    ],
+    "advantage": "This feedback loop can become a significant competitive advantage."
+  },
+  "roadmap": {
+    "source_section": "recommended first implementation",
+    "v1_exclusions": ["facial recognition", "autonomous pursuit", "automatic physical intervention"],
+    "build_sequence": [
+      "RTSP camera",
+      "YOLO26 custom weapon model",
+      "person/weapon tracking",
+      "temporal verification",
+      "zones",
+      "event API",
+      "dashboard",
+      "evidence clips"
+    ],
+    "metrics_that_matter": [
+      "weapon recall",
+      "false alarms per camera-hour",
+      "detection latency",
+      "performance at night",
+      "performance across different camera types",
+      "behavior under occlusion"
+    ],
+    "yolo26_fit": "YOLO26 is a strong fit for this architecture because the current release supports custom training, real-time tracking, several specialized vision tasks, and deployment through optimized export formats (S1)."
+  }
+}
